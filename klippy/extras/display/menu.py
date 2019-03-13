@@ -836,11 +836,11 @@ class MenuOctoprint(MenuList):
         if self._manager.parameters['toolhead']['is_printing']:
             return
         files = octoprint.list_files()
-        for name, _ in files:
+        for name, resource in files:
             self.append_item(MenuCommand(self._manager, {
                     'name': '%s' % name,
                     'cursor': '+',
-                    'gcode': 'M300',
+                    'gcode': 'OCTOPRINT PRINT_FILE=%s' % resource,
                     'scroll': True,
                     # mind the cursor size in width
                     'width': (self._manager.cols-1)
