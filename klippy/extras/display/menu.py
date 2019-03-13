@@ -833,7 +833,7 @@ class MenuOctoprint(MenuList):
 
     def _populate_files(self):
         octoprint = self._manager.objs.get('octoprint')
-        if self._manager.parameter['toolhead']['is_printing']:
+        if self._manager.parameters['toolhead']['is_printing']:
             return
         files = octoprint.list_files()
         for name, _ in files:
