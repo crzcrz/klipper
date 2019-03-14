@@ -833,14 +833,16 @@ class MenuOctoprint(MenuList):
 
     def _populate_files(self):
         octoprint = self._manager.objs.get('octoprint')
+        if octoprint is None:
+            return
         if self._manager.parameters['toolhead']['is_printing']:
             return
         files = octoprint.list_files()
         for name, resource in files:
             self.append_item(MenuCommand(self._manager, {
                     'name': '%s' % name,
-                    'cursor': '+',
                     'gcode': 'OCTOPRINT PRINT_FILE=%s' % resource,
+                    'action': 'exit',
                     'scroll': True,
                     # mind the cursor size in width
                     'width': (self._manager.cols-1)

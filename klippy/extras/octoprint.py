@@ -3,10 +3,10 @@
 # Copyright (C) 2019  Stanislav Kljuhhin <stanislav.kljuhhin@me.com>
 #
 # This file may be distributed under the terms of the GNU GPLv3 license.
-import requests
+import requests, logging
 
 
-DEFAULT_HOST = 'http://localhost:80'
+DEFAULT_HOST = 'http://localhost:5000'
 GET_FILES = '/api/files'
 
 class Octoprint:
@@ -18,20 +18,27 @@ class Octoprint:
         self.gcode.register_command('OCTOPRINT', self.cmd_OCTOPRINT)
 
     def list_files(self):
-        r = requests.get(self.host + GET_FILES, headers=self._headers)
-        if r.status_code != 200:
+        try:
+            r = requests.get(self.host + GET_FILES, headers=self._headers)
+            r.raise_for_status()
+        except requests.exceptions.RequestException:
+            logging.exception('Octoprint: exception when requesting the file list')
             return
         for file in r.json().get('files', []):
             yield file['display'], file['refs']['resource']
 
     def _print_file(self, resource):
         json = {'command': 'select', 'print': True}
-        r = requests.post(resource, headers=self._headers, json=json)
+        try:
+            r = requests.post(resource, headers=self._headers, json=json)
+            r.raise_for_status()
+        except requests.exceptions.RequestException:
+            logging.exception('Octoprint: exception when starting the print')
 
     def cmd_OCTOPRINT(self, params):
         print_file = params.get('PRINT_FILE')
         if print_file is None:
-            self.gcode.respond_info('Required parameter missing.')
+            self.gcode.respond_info('Required parameter PRINT_FILE missing.')
             return
         self._print_file(print_file)
         self.gcode.respond_info('Printing %s' % print_file)
