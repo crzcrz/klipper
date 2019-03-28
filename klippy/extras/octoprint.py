@@ -25,7 +25,7 @@ class Octoprint:
             logging.exception('Octoprint: exception when requesting the file list')
             return
         for file in r.json().get('files', []):
-            yield file['display'], file['refs']['resource']
+            yield file['name'], file['refs']['resource']
 
     def _print_file(self, resource):
         json = {'command': 'select', 'print': True}
