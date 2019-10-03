@@ -44,6 +44,8 @@ class Heater:
         self.lock = threading.Lock()
         self.last_temp = self.smoothed_temp = self.target_temp = 0.
         self.last_temp_time = 0.
+        # pause/resume
+        self.target_temp_before_pause = None
         # pwm caching
         self.next_pwm_time = 0.
         self.last_pwm_value = 0.
@@ -101,12 +103,23 @@ class Heater:
         return self.max_power
     def get_smooth_time(self):
         return self.smooth_time
+    def pause(self):
+        with self.lock:
+            if self.target_temp_before_pause is None:
+                self.target_temp_before_pause = self.target_temp
+                self.target_temp = 0
+    def resume(self):
+        with self.lock:
+            if self.target_temp_before_pause is not None:
+                self.target_temp = self.target_temp_before_pause
+                self.target_temp_before_pause = None
     def set_temp(self, print_time, degrees):
         if degrees and (degrees < self.min_temp or degrees > self.max_temp):
             raise error("Requested temperature (%.1f) out of range (%.1f:%.1f)"
                         % (degrees, self.min_temp, self.max_temp))
         with self.lock:
             self.target_temp = degrees
+            self.target_temp_before_pause = None
     def get_temp(self, eventtime):
         print_time = self.mcu_pwm.get_mcu().estimated_print_time(eventtime) - 5.
         with self.lock:

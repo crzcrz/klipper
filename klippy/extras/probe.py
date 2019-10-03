@@ -15,6 +15,7 @@ the Z axis minimum position so the probe can travel further
 class PrinterProbe:
     def __init__(self, config, mcu_probe):
         self.printer = config.get_printer()
+        self.printer.register_event_handler("klippy:ready", self.handle_ready)
         self.name = config.get_name()
         self.mcu_probe = mcu_probe
         self.speed = config.getfloat('speed', 5.0)
@@ -40,6 +41,8 @@ class PrinterProbe:
                                                  minval=0.)
         self.samples_retries = config.getint('samples_tolerance_retries', 0,
                                              minval=0)
+        self.pause_heaters_names = config.get('pause_heaters', '')
+        self.pause_heaters = []
         # Register z_virtual_endstop pin
         self.printer.lookup_object('pins').register_chip('probe', self)
         # Register PROBE/QUERY_PROBE commands
@@ -52,6 +55,11 @@ class PrinterProbe:
                                     desc=self.cmd_PROBE_CALIBRATE_help)
         self.gcode.register_command('PROBE_ACCURACY', self.cmd_PROBE_ACCURACY,
                                     desc=self.cmd_PROBE_ACCURACY_help)
+    def handle_ready(self):
+        if self.pause_heaters_names:
+            pheater = self.printer.lookup_object('heater')
+            self.pause_heaters = [pheater.lookup_heater(n.strip())
+                                for n in self.pause_heaters_names.split(',')]
     def setup_pin(self, pin_type, pin_params):
         if pin_type != 'endstop' or pin_params['pin'] != 'z_virtual_endstop':
             raise pins.error("Probe virtual endstop only useful as endstop pin")
@@ -67,6 +75,7 @@ class PrinterProbe:
         pos[2] = self.z_position
         endstops = [(self.mcu_probe, "probe")]
         verify = self.printer.get_start_args().get('debugoutput') is None
+        [h.pause() for h in self.pause_heaters]
         try:
             homing_state.homing_move(pos, endstops, speed,
                                      probe_pos=True, verify_movement=verify)
@@ -75,6 +84,8 @@ class PrinterProbe:
             if "Timeout during endstop homing" in reason:
                 reason += HINT_TIMEOUT
             raise homing.CommandError(reason)
+        finally:
+            [h.resume() for h in self.pause_heaters]
         pos = toolhead.get_position()
         self.gcode.respond_info("probe at %.3f,%.3f is z=%.6f" % (
             pos[0], pos[1], pos[2]))
